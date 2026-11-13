@@ -51,6 +51,20 @@ jobs:
           repository: UniXNU/uefi-sheng
           path: uefi-sheng
           submodules: recursive
+      - name: Repair pinned Mesa patch metadata
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('UniXNU/patches/mesa/turnip-frame-diagnostics.patch')
+          text = path.read_text()
+          header = 'diff --git a/src/freedreno/vulkan/tu_frame_diagnostic.h b/src/freedreno/vulkan/tu_frame_diagnostic.h\n'
+          old = header + '--- /dev/null\n'
+          new = header + 'new file mode 100644\n--- /dev/null\n'
+          if text.count(old) == 1:
+              path.write_text(text.replace(old, new, 1))
+          elif text.count(new) != 1:
+              raise SystemExit('Unexpected Mesa patch header; inspect the pinned source')
+          PY
       - name: tools
         run: |
           brew install dtc llvm lld cmake mtools ninja glslang shaderc spirv-tools bison pkgconf rustup blacktop/tap/ipsw
