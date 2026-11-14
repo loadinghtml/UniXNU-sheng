@@ -51,6 +51,11 @@ jobs:
           repository: UniXNU/uefi-sheng
           path: uefi-sheng
           submodules: recursive
+      - uses: actions/checkout@v4
+        with:
+          repository: UniXNU/UniXNU-sm8550-common
+          ref: 2dc650ca76ae38715cd0712e60a44b14fe251745
+          path: UniXNU-sm8550-common
       - name: Fetch verified Wi-Fi firmware
         run: |
           python3 - <<'PY'
@@ -110,6 +115,11 @@ jobs:
             [ -f "/opt/homebrew/opt/llvm/bin/$t" ] || [ -f "/opt/homebrew/opt/lld/bin/$t" ] || { echo "missing tool: $t"; ok=0; }
           done
           [ "$ok" = 1 ]
+      - name: Check SM8550 Bluetooth and video integration
+        working-directory: device
+        run: |
+          python3 scripts/check-bluetooth-platform.py
+          python3 scripts/check-video-platform.py
       - name: Prepare and build Wi-Fi supplicant
         working-directory: device/drivers/Ath12kWifi
         env:
@@ -197,7 +207,8 @@ jobs:
           INIT_DATA: ${{ inputs.init_data }}
           OS_PROFILE: ${{ inputs.os }}
         run: |
-          args=(--os "$OS_PROFILE" --uefi ../uefi-sheng)
+          args=(--os "$OS_PROFILE" --uefi ../uefi-sheng
+                --local-module "soc:sm8550=$GITHUB_WORKSPACE/UniXNU-sm8550-common")
           if [ "$OS_PROFILE" = 27 ] && [ "$INIT_DATA" = true ]; then
             args+=(--init-data)
           fi
