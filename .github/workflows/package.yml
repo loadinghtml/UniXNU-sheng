@@ -110,6 +110,34 @@ jobs:
             [ -f "/opt/homebrew/opt/llvm/bin/$t" ] || [ -f "/opt/homebrew/opt/lld/bin/$t" ] || { echo "missing tool: $t"; ok=0; }
           done
           [ "$ok" = 1 ]
+      - name: Prepare and build Wi-Fi supplicant
+        working-directory: device/drivers/Ath12kWifi
+        env:
+          OS_PROFILE: ${{ inputs.os }}
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import subprocess
+          lock = json.loads(Path('tools/source-lock.json').read_text())
+          for name in ('linux', 'freebsd'):
+              source = lock[name]
+              directory = Path('deps') / name
+              if not directory.exists():
+                  directory.mkdir(parents=True)
+                  subprocess.run(['git', 'init', '-q', str(directory)], check=True)
+                  subprocess.run(['git', '-C', str(directory), 'fetch', '--depth=1',
+                                  source['url'], source['commit']], check=True)
+                  subprocess.run(['git', '-C', str(directory), 'sparse-checkout', 'set',
+                                  '--no-cone', *source['paths']], check=True)
+                  subprocess.run(['git', '-C', str(directory), 'checkout', '--detach',
+                                  source['commit']], check=True)
+          PY
+          python3 tools/fetch-sources.py
+          python3 tools/fetch-sources.py --check
+          if [ "$OS_PROFILE" = 27 ]; then
+            python3 tools/build-supplicant.py --target ios
+          fi
       - name: platform seed
         env:
           seed: ${{ secrets.UNIXNU_UNIQUE_CHIP_ID }}
@@ -174,6 +202,19 @@ jobs:
             args+=(--init-data)
           fi
           scripts/package.sh "${args[@]}"
+      - name: Show build failure details
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          patterns = ('UniXNU/out/sheng/*/*/logs/*.log',
+                      'device/drivers/Ath12kWifi/out/wpa-*/build.log')
+          for pattern in patterns:
+              for path in sorted(Path('.').glob(pattern)):
+                  print('::group::' + str(path))
+                  print('\n'.join(path.read_text(errors='replace').splitlines()[-160:]))
+                  print('::endgroup::')
+          PY
       - uses: actions/cache/save@v4
         if: always() && inputs.os == '27' && steps.data-cache.outputs.cache-hit != 'true' && hashFiles('UniXNU/out/sheng/ipados-27.0.1-24A446/sheng_ipados27/runtime/data.dbr') != ''
         with:
