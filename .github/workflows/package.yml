@@ -226,6 +226,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           patterns = ('UniXNU/out/sheng/*/*/logs/*.log',
+                      'UniXNU/out/sheng/*/*/tree/build/xnu/fileset-reference/*/*-build.log',
                       'device/drivers/Ath12kWifi/out/wpa-*/build.log')
           for pattern in patterns:
               for path in sorted(Path('.').glob(pattern)):
@@ -233,6 +234,15 @@ jobs:
                   print('\n'.join(path.read_text(errors='replace').splitlines()[-160:]))
                   print('::endgroup::')
           PY
+      - name: Preserve reference kernel failure logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reference-kernel-logs-${{ github.run_attempt }}
+          retention-days: 3
+          if-no-files-found: warn
+          path: |
+            UniXNU/out/sheng/*/*/tree/build/xnu/fileset-reference/*/*-build.log
       - uses: actions/cache/save@v4
         if: always() && inputs.os == '27' && steps.data-cache.outputs.cache-hit != 'true' && hashFiles('UniXNU/out/sheng/ipados-27.0.1-24A446/sheng_ipados27/runtime/data.dbr') != ''
         with:
