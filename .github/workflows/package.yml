@@ -51,6 +51,31 @@ jobs:
           repository: UniXNU/uefi-sheng
           path: uefi-sheng
           submodules: recursive
+      - name: Fetch verified Wi-Fi firmware
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+          import urllib.request
+          directory = Path('device/firmware/wcn7850')
+          files = json.loads((directory / 'manifest.json').read_text())['files']
+          base = 'https://raw.githubusercontent.com/ianchb/sheng-firmware/ebdd6f89ee5aaa132f03860c211bdfb4294bd954/ath12k/WCN7850/hw2.0/'
+          for name, expected in files.items():
+              if name not in ('amss.bin', 'm3.bin', 'board-2.bin'):
+                  raise SystemExit('Unexpected Wi-Fi firmware name: ' + name)
+              path = directory / name
+              if path.exists():
+                  data = path.read_bytes()
+              else:
+                  with urllib.request.urlopen(base + name, timeout=60) as response:
+                      data = response.read(expected['bytes'] + 1)
+              if len(data) != expected['bytes'] or hashlib.sha256(data).hexdigest() != expected['sha256']:
+                  raise SystemExit('Wi-Fi firmware identity mismatch: ' + name)
+              if not path.exists():
+                  path.write_bytes(data)
+              print('Verified Wi-Fi firmware: ' + name)
+          PY
       - name: Repair pinned Mesa patch metadata
         run: |
           python3 - <<'PY'
