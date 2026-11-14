@@ -56,6 +56,13 @@ jobs:
           repository: UniXNU/UniXNU-sm8550-common
           ref: 2dc650ca76ae38715cd0712e60a44b14fe251745
           path: UniXNU-sm8550-common
+      - name: Fetch and verify device firmware
+        working-directory: device
+        run: |
+          python3 scripts/extract-files.py
+          python3 scripts/extract-files.py --check
+          python3 drivers/QcomIris/tools/fetch-sources.py
+          python3 drivers/QcomIris/tools/fetch-sources.py --offline
       - name: Fetch verified Wi-Fi firmware
         run: |
           python3 - <<'PY'
