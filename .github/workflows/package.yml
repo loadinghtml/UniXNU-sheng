@@ -88,6 +88,13 @@ jobs:
                   path.write_bytes(data)
               print('Verified Wi-Fi firmware: ' + name)
           PY
+      - name: Apply upstream reference kernel fix
+        working-directory: UniXNU
+        run: |
+          # UniXNU/UniXNU commit 1c9261527e7e90f0eb0f263afeda80598fdd5cd0.
+          git apply --check ../device/.github/patches/reference-cache-input-hook.patch
+          git apply ../device/.github/patches/reference-cache-input-hook.patch
+          python3 scripts/test-fileset-reference.py
       - name: Repair pinned Mesa patch metadata
         run: |
           python3 - <<'PY'
